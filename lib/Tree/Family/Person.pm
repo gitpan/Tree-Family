@@ -426,14 +426,14 @@ sub Freeze {
     for ($self->partners) {
         push @{ $i{partners} },( $_->isa('REF') ? $$_->{id} : $$_ );
     }
-    $$self = \%i;
+    return bless \%i, "Tree::Family::Person";
     # return value is ignored; you can't replace the object.
 }
 
 sub Toast {
     my $self = shift;
     my $class = ref $self;
-    my $data = $$self;
+    my $data = $self;
     my %i = map { $_ => $data->{$_} } @Fields;
     for (@RelationFields) {
         next if /kids|partners/i;
@@ -449,7 +449,7 @@ sub Toast {
     }
     my $id = $data->{id};
     $globalHash{$id} = \%i;
-    $$self = $id;
+    $self = \$id;
     return bless $self, $class;
 }
 

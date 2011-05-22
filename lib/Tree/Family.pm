@@ -42,7 +42,9 @@ use strict;
 use List::MoreUtils qw(first_index last_index uniq);
 use Algorithm::Permute;
 use Clone qw(clone);
-our $VERSION = '0.01';
+use YAML::XS qw/Dump Load LoadFile/;
+
+our $VERSION = '0.02';
 our $urlBase = 'http://localhost/';
 our $GraphHeader = <<'';
 graph family { 
@@ -80,10 +82,11 @@ sub _init {
     # $self->{people} will be a hash from ids to T:F:Person objects
     if (-e $self->{filename} && -s $self->{filename}) {
         my $filename = $self->{filename};
-        $self->{people} = do $filename;
+        $self->{people} = LoadFile $filename;
     } else {
         $self->{people} = {};
     }
+    $self->{people} = { map { $_ => $self->{people}{$_}->Toast } keys %{ $self->{people} } };
     die "error reading $self->{filename}, got (".ref($self->{people}).") error: [$!] [$@]" unless ref($self->{people}) eq 'HASH';
 }
 
@@ -119,11 +122,9 @@ sub write {
     Tree::Family::Person->_set_all_partners;
     my $filename = $self->{filename};
     my $tmpfile = $filename."-tmp-".$$.time.(rand 1);
-    my $d = Data::Dumper->new(clone [$self->{people}]); # clone because dumping is destructive
-    $d->Freezer('Freeze'); 
-    $d->Toaster('Toast'); 
+    my %write = map { $_ => $self->{people}{$_}->Freeze } keys %{ $self->{people} };
     open FP, ">$tmpfile" or die "Couldn't write to $tmpfile : $!";
-    print FP $d->Dump;
+    print FP Dump( \%write );
     close FP;
     rename $tmpfile, $filename or die "Couldn't rename $tmpfile to $filename : $!";
     return 1;
